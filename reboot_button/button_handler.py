@@ -4,11 +4,11 @@ import time
 import logging
 import os
 from RPi import GPIO
-from cysystemd import journal
+from systemd.journal import JournaldLogHandler
 
 
 logger = logging.getLogger("reboot_button")
-logger.addHandler(journal.JournaldLogHandler())
+logger.addHandler(JournaldLogHandler())
 logger.setLevel(logging.INFO)
 logger.info("Logging initialized for systemd journal.")
 
