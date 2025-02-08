@@ -2,3 +2,5 @@ rpi-lgpio
 pytest
 pytest-mock
 pylint
+pytest-cov
+
