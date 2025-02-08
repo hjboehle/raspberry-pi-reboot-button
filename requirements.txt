@@ -1,4 +1,4 @@
 rpi-lgpio
+pytest
 pytest-mock
-systemd-python
-
+pylint
