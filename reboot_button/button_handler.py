@@ -1,20 +1,13 @@
 """module button_handler"""
 
 import time
-import logging
 import os
+import sys
+import logging
 from RPi import GPIO
-from reboot_button.logger_config import setup_logger
 
 
-logger = setup_logger()
-logger.info("Logging initialized for systemd journal.")
-
-
-BUTTON_PIN = 17
-
-
-def button_callback(channel):
+def button_callback(logger, channel):
     """
     Callback function for the button press event.
 
@@ -27,7 +20,7 @@ def button_callback(channel):
     os.system("sudo reboot")
 
 
-def monitor_button():
+def monitor_button(logger, button_pin):
     """
     Monitors the button press and sets up GPIO configurations.
 
@@ -42,25 +35,37 @@ def monitor_button():
         ValueError: Raised when an invalid GPIO mode or setup parameter is provided.
     """
     try:
-        logging.info("Set GPIO mode.")
+        logger.info("Set GPIO mode.")
         GPIO.setmode(GPIO.BCM)
-        logging.info("Configuration of the pin as an input pin with pull-up resistor.")
-        GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        logging.info("Add event monitoring.")
-        GPIO.add_event_detect(BUTTON_PIN, GPIO.FALLING, callback=button_callback, bouncetime=300)
+        logger.info("Configuration of the pin as an input pin with pull-up resistor.")
+        GPIO.setup(button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        logger.info("Add event monitoring.")
+        GPIO.add_event_detect(
+            button_pin,
+            GPIO.FALLING,
+            callback=button_callback(logger, button_pin),
+            bouncetime=300
+        )
 
         while True:
             time.sleep(1)
     except ValueError as err:
-        logging.error("Invalid GPIO configuration: %s", err)
+        logger.error("Invalid GPIO configuration: %s", err)
     except KeyboardInterrupt:
-        logging.info("Program interrupted by user.")
+        logger.info("Program interrupted by user.")
     except RuntimeError as err:
-        logging.error("Runtime error occurred: %s", err)
+        logger.error("Runtime error occurred: %s", err)
     finally:
         GPIO.cleanup()
-        logging.info("GPIO cleanup done.")
+        logger.info("GPIO cleanup done.")
 
+
+def main():
+    """
+    Main entry point for this module.
+    """
+    logging.info("this script is not meant to be run directly")
+    sys.exit(1)
 
 if __name__ == "__main__":
-    monitor_button()
+    main()

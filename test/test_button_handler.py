@@ -69,7 +69,7 @@ def test_monitor_button(mocker):
         - GPIO.cleanup is called at the end.
     """
     # Mock dependencies
-    mock_logger = mocker.patch("reboot_button.button_handler.logging")
+    mock_logger = mocker.patch("reboot_button.button_handler.logger")
     mocked_gpio = mocker.patch("reboot_button.button_handler.GPIO")
     mocker.patch("time.sleep", side_effect=InterruptedError)
 
