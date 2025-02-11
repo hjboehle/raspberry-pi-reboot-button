@@ -1,6 +1,6 @@
 """module main"""
 
-import os
+import sys
 from reboot_button.config import (
     LOG_DIR_NAME_ROOT,
     LOG_DIR_NAME_HOME,
@@ -8,7 +8,7 @@ from reboot_button.config import (
     BUTTON_PIN)
 from reboot_button.log_file import initialize_log_file
 from reboot_button.logger_config import setup_logger
-#from reboot_button.button_handler import monitor_button
+from reboot_button.button_handler import monitor_button
 
 
 def main():
@@ -21,10 +21,9 @@ def main():
         LOG_FILE_NAME
     )
     if not result_initialize_log_file["success"]:
-        os._exit(1)
-    os._exit(0)
+        sys.exit(1)
     logger = setup_logger(result_initialize_log_file["log_file_path"])
-    logger.info("Logger initialized successfully.")
+    logger.info("File logger initialized successfully.")
     monitor_button(logger, BUTTON_PIN)
 
 

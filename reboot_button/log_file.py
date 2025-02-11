@@ -38,6 +38,8 @@ def is_log_file_writable(log_file_path) -> bool:
     Returns:
         bool: True if the log file is writable, False otherwise.
     """
+    if not os.path.exists(log_file_path):
+        return False
     try:
         with open(log_file_path, 'a', encoding='utf-8'):
             pass
