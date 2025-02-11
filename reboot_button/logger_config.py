@@ -3,7 +3,7 @@
 import logging
 
 
-def setup_logger(log_file, name="reboot_button"):
+def setup_logger(log_file_path, name="reboot_button"):
     """
     Sets up and returns a logger instance with file logging.
 
@@ -16,7 +16,7 @@ def setup_logger(log_file, name="reboot_button"):
     """
     logger = logging.getLogger(name)
     if not logger.hasHandlers():
-        handler = logging.FileHandler(log_file)
+        handler = logging.FileHandler(log_file_path)
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
         handler.setFormatter(formatter)
         logger.addHandler(handler)
