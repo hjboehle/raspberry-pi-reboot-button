@@ -2,6 +2,7 @@
 
 import logging
 import os
+from reboot_button.logger_config import setup_file_logger
 
 
 def configure_stdout_logger(name="stdout_logger"):
@@ -28,126 +29,60 @@ logger = configure_stdout_logger()
 logger.info("Logging initialized for standard out.")
 
 
-def is_log_file_writable(log_file_path) -> bool:
+def append_or_create_log_file(log_dir_name, log_file_name) -> bool:
     """
-    Check if the file is writable.
-
-    Args:
-        log_file_path (str): The path of the file to check.
-
-    Returns:
-        bool: True if the log file is writable, False otherwise.
-    """
-    if not os.path.exists(log_file_path):
-        return False
-    try:
-        with open(log_file_path, 'a', encoding='utf-8'):
-            pass
-        return True
-    except (IOError, OSError):
-        return False
-
-
-def is_log_path_exists(log_path_name) -> bool:
-    """
-    Check if the log directory exists.
-
-    Args:
-        log_dir_name (str): The directory to check.
-
-    Returns:
-        bool: True if the log directory exists, False otherwise.
-    """
-    try:
-        return os.path.exists(log_path_name)
-    except (IOError, OSError):
-        return False
-
-
-def is_create_directory(log_dir_name) -> bool:
-    """
-    Create the log directory.
+    Append to the log file or create it and its directory if it does not exist.
 
     Args:
         log_dir_name (str): The directory to create.
+        log_file_name (str): The name of the log file to create.
 
     Returns:
-        bool: True if the log directory is created, False otherwise.
-    """
-    try:
-        os.makedirs(log_dir_name)
-        return True
-    except (IOError, OSError):
-        return False
-
-
-def check_and_create_log_file(log_dir_name, log_file_name):
-    """
-    Check if the log file exists and is writable, or create it.
-    
-    Args:
-        log_dir_name (str): The directory to store the log file.
-        log_file_name (str): The name of the log file.
-
-    Returns:
-        bool: True if the log file exists and is writable, False otherwise.
+        bool: True if the log file is created or already exists, False otherwise.
     """
     log_file_path = os.path.join(log_dir_name, log_file_name)
-    if is_log_path_exists(log_file_path):
-        logger.info("Log file %s exists.", log_file_path)
-        if is_log_file_writable(log_file_path):
-            logger.info("Log file %s is writable.", log_file_path)
-            return True
-        logger.error("Log file %s is not writable.", log_file_path)
-        return False
-    logger.info("Log file %s does not exist.", log_file_path)
-    if not is_log_path_exists(log_dir_name):
-        logger.info(
-            "Directory %s for log file %s does not exist.",
-            log_dir_name,
-            log_file_name
-        )
-        if not is_create_directory(log_dir_name):
-            logger.error(
-                "Failed to create directory %s for log file %s.",
-                log_dir_name,
-                log_file_name
-            )
-            return False
-        logger.info("Directory %s for log file %s created.", log_dir_name, log_file_name)
     try:
-        with open(log_file_path, 'w', encoding='utf-8'):
+        logger.info("Creating directory '%s' for log file if it does not exist.", log_dir_name)
+        os.makedirs(log_dir_name, exist_ok=True)
+        logger.info("Directory '%s' for log file created or already exists.", log_dir_name)
+        logger.info("Appending to or creating log file '%s'.", log_file_path)
+        with open(log_file_path, "a", encoding='utf-8'):
             pass
-        logger.info("Log file %s created.", log_file_path)
+        logger.info("Log file '%s' created or opened for appending.", log_file_path)
         return True
-    except IOError as err:
-        logger.error("Failed to create log file %s: %s", log_file_path, err)
+    except (IOError, OSError) as err:
+        logger.error("Failed to create or append to log file '%s': %s", log_file_path, err)
         return False
 
 
-def initialize_log_file(log_dir_root, log_dir_home, log_file_name) -> dict:
+def setup_log_file(log_dir_root, log_dir_home, log_file_name) -> dict:
     """
-    Initializes the file logger for the application.
+    Sets up the log file for the application, either by binding to an existing one or creating 
+    a new one and writes a setup message to the log file.
 
     Args:
         log_dir_root (str): The root directory for the log file.
         log_dir_home (str): The home directory for the log file.
         log_file_name (str): The name of the log file.
     
-    Returns: True if the log file is initialized successfully, False otherwise.
+    Returns:
+        dict: A dictionary containing the success status and the log file path.
     """
-    logger.info("Initializing file logger.")
-    if check_and_create_log_file(log_dir_root, log_file_name):
+    if append_or_create_log_file(log_dir_root, log_file_name):
         logger.info(
-            "System-wide log file '%s' successfully initialized.",
+            "System-wide log file '%s' successfully set up.",
             os.path.join(log_dir_root, log_file_name)
         )
+        setup_file_logger(os.path.join(log_dir_root, log_file_name))
+        logger.info("System-wide logger set up.")
         return {"success": True, "log_file_path": os.path.join(log_dir_root, log_file_name)}
-    if check_and_create_log_file(log_dir_home, log_file_name):
+    if append_or_create_log_file(log_dir_home, log_file_name):
         logger.info(
-            "User-specific log file '%s' successfully initialized.",
+            "User-specific log file '%s' successfully set up.",
             os.path.join(log_dir_home, log_file_name)
         )
+        setup_file_logger(os.path.join(log_dir_home, log_file_name))
+        logger.info("User-specific logger set up.")
         return {"success": True, "log_file_path": os.path.join(log_dir_home, log_file_name)}
-    logger.error("Failed to initialize log file.")
+    logger.error("Failed to set up log file.")
     return {"success": False, "log_file_path": ""}

@@ -1,9 +1,9 @@
-"""moduule logger_config"""
+"""module logger_config"""
 
 import logging
 
 
-def setup_logger(log_file_path, name="reboot_button"):
+def setup_file_logger(log_file_path, name="reboot_button"):
     """
     Sets up and returns a logger instance with file logging.
 
