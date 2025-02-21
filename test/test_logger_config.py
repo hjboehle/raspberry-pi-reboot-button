@@ -5,65 +5,75 @@ import pytest
 from reboot_button.logger_config import setup_file_logger
 
 
-@pytest.fixture
-def reset_logger():
+@pytest.fixture(name="log_file")
+def log_file_path(tmp_path):
     """
-    Fixture to reset the logger before each test.
+    Generates the file path for the test log file.
+
+    Args:
+        tmp_path (pathlib.Path): The temporary directory path provided by pytest.
+
+    Returns:
+        pathlib.Path: The complete file path for the test log file.
     """
-    logger = logging.getLogger("reboot_button")
-    logger.handlers = []
-    yield
-    logger.handlers = []
+    return tmp_path / "test_log.log"
 
 
-def test_setup_file_logger_creates_file_handler(mocker):
+def test_setup_file_logger_creates_logger(log_file):
     """
-    Test that setup_file_logger adds a FileHandler to the logger.
-
-    - Mocks `logging.FileHandler` to avoid writing to a real file.
-    - Ensures that `setup_file_logger` creates a FileHandler with the correct log file.
+    Test that setup_file_logger creates a logger instance.
     """
-    # Patch both FileHandler and getLogger to monitor their behavior
-    mock_file_handler = mocker.patch("logging.FileHandler")
-    mock_get_logger = mocker.patch("logging.getLogger")
-
-    # Create the logger mock
-    mock_logger = mock_get_logger.return_value
-    mock_logger.hasHandlers.return_value = False  # Ensure no handlers are present
-
-    # add debugging information
-    setup_file_logger()
-
-    # Check if logging.FileHandler was created with the correct file
-    mock_file_handler.assert_called_once_with(LOG_FILE)
-
-    # Ensure that the handler was added to the logger
-    mock_logger.addHandler.assert_called_once_with(mock_file_handler.return_value)
+    logger = setup_file_logger(log_file)
+    assert isinstance(logger, logging.Logger), "Logger not created."
+    assert logger.name == "reboot_button", "Logger name not set correctly."
 
 
-def test_setup_file_logger_does_not_add_handler_if_exists(mocker):
+def test_setup_file_logger_creates_file_handler(log_file):
     """
-    Test that setup_file_logger does not add a FileHandler if one already exists.
+    Test that setup_file_logger creates a file handler.
     """
-    # Patch both FileHandler and getLogger to monitor their behavior
-    mock_file_handler = mocker.patch("logging.FileHandler")
-    mock_get_logger = mocker.patch("logging.getLogger")
+    logger = setup_file_logger(log_file)
+    handlers = logger.handlers
+    assert len(handlers) == 1, "No handlers created."
+    assert isinstance(handlers[0], logging.FileHandler), "Handler not a FileHandler."
+    assert handlers[0].baseFilename == str(log_file), "File path not set correctly."
 
-    # Erstelle den Logger mock
-    mock_logger = mock_get_logger.return_value
-    mock_logger.hasHandlers.return_value = True  # Simulate existing handlers
 
-    # Debugging-Informationen hinzufügen
-    print("Calling setup_file_logger()")
-    setup_file_logger()
-    print("setup_file_logger() called")
+def test_setup_file_logger_uses_correct_formatter(log_file):
+    """
+    Test that setup_file_logger uses the correct formatter
+    """
+    logger = setup_file_logger(log_file)
+    formatter = logger.handlers[0].formatter
+    test_record = logging.LogRecord(
+        name="test",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=0,
+        msg="test",
+        args=(),
+        exc_info=None
+    )
+    formatted_message = formatter.format(test_record)
+    expected_message = f"{test_record.asctime} - {test_record.levelname} - {test_record.msg}"
+    assert formatted_message == expected_message, "Formatter format not set correctly."
 
-    # Debugging-Informationen hinzufügen
-    print(f"mock_file_handler.call_count: {mock_file_handler.call_count}")
-    print(f"mock_file_handler.call_args_list: {mock_file_handler.call_args_list}")
 
-    # Prüfen, ob logging.FileHandler nicht erstellt wurde
-    mock_file_handler.assert_not_called()
+def test_setup_file_logger_logs_info_level(log_file):
+    """
+    Test that setup_file_logger logs at the INFO level.
+    """
+    logger = setup_file_logger(log_file)
+    assert logger.level == logging.INFO, "Logger level not set to INFO."
 
-    # Sicherstellen, dass kein neuer Handler zum Logger hinzugefügt wurde
-    mock_logger.addHandler.assert_not_called()
+
+def test_setup_file_logger_logs_messages(log_file):
+    """
+    Test that setup_file_logger logs messages to the file.
+    """
+    logger = setup_file_logger(log_file)
+    test_message = "This is a test log message."
+    logger.info(test_message)
+    with open(log_file, "r", encoding="utf-8") as tested_log_file:
+        log_contents = tested_log_file.read()
+    assert test_message in log_contents
