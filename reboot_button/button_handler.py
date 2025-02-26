@@ -14,6 +14,7 @@ def button_callback(logger, channel):
     Logs a message and initiates a system reboot when the button is pressed.
 
     Args:
+        logger (Logger): The logger object to log messages.
         channel (int): The GPIO pin number that triggered the callback.
     """
     logger.info("Button pressed on GPIO '%s'. Raspberry Pi will reboot.", channel)
@@ -27,6 +28,10 @@ def monitor_button(logger, button_pin):
     Initializes GPIO mode, sets up the button pin, and adds event detection 
     for falling edge signals. The function continuously monitors the GPIO 
     pin for changes and logs relevant information or errors.
+
+    Args:
+        logger (Logger): The logger object to log messages.
+        button_pin (int): The GPIO pin number to monitor.
 
     Raises:
         GPIO.InvalidChannelException: Raised when an invalid GPIO channel is specified.
@@ -43,7 +48,7 @@ def monitor_button(logger, button_pin):
         GPIO.add_event_detect(
             button_pin,
             GPIO.FALLING,
-            callback=button_callback(logger, button_pin),
+            callback=lambda channel: button_callback(logger, channel),
             bouncetime=300
         )
 

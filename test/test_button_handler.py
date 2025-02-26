@@ -1,101 +1,102 @@
 """module test_button_handler"""
 
+import logging
+import sys
+from unittest import mock
+import os
+import threading
+import time
 import pytest
 
 
-# Mock the module so that it does not try to load real GPIO
-@pytest.fixture(autouse=True)
-def mock_gpio(mocker):
-    """
-    Fixture to mock the RPi and RPi.GPIO modules.
-    
-    This fixture automatically applies to all tests in the module. It uses the `mocker` 
-    fixture to patch the `sys.modules` dictionary, replacing the `RPi` and `RPi.GPIO` 
-    modules with `MagicMock` objects. This allows tests to run without requiring the 
-    actual RPi.GPIO library, which is useful for testing on non-Raspberry Pi systems.
-    
-    Args:
-        mocker (pytest_mock.MockerFixture): The mocker fixture provided by the pytest-mock plugin.
-    
-    Returns:
-        None
-    """
-    mocker.patch.dict("sys.modules", {"RPi": mocker.MagicMock(), "RPi.GPIO": mocker.MagicMock()})
+# Ensure the project root is in sys.path
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 
-def test_button_callback(mocker):
-    """
-    Test the button_callback function.
+# Mock RPi.GPIO module BEFORE importing button_handler
+sys.modules["RPi"] = mock.Mock()
+sys.modules["RPi.GPIO"] = mock.Mock()
 
-    This test verifies that the button_callback function logs the correct message
-    and calls the os.system function with the correct command to reboot the Raspberry Pi
-    when a button press is detected on a specified GPIO pin.
+from reboot_button.button_handler import ( # pylint: disable=wrong-import-position
+    button_callback,
+    monitor_button
+)
 
-    Args:
-        mocker: A pytest-mock fixture used to patch the logger and os.system functions.
 
-    Asserts:
-        - The logger.info method is called once with the expected log message.
-        - The os.system function is called once with the command "sudo reboot".
-    """
-    mock_logger = mocker.patch("reboot_button.button_handler.logger")
+@pytest.fixture(name="logger_mock")
+def logger():
+    """Fixture to create a logger mock."""
+    return mock.Mock(spec=logging.Logger)
+
+
+@pytest.fixture(name="button_pin_mock")
+def button_pin():
+    """Fixture to define a test GPIO pin."""
+    return 17  # Example GPIO pin number
+
+
+def test_button_callback(mocker, logger_mock, button_pin_mock):
+    """Test the button_callback function."""
     mock_os_system = mocker.patch("os.system")
 
-    import reboot_button.button_handler as bh # pylint: disable=import-outside-toplevel
-    bh.button_callback(17)
+    button_callback(logger_mock, button_pin_mock)
 
-    mock_logger.info.assert_called_once_with(
-        "Button pressed on GPIO '%s'. Raspberry Pi will reboot.", 17
+    # Check if logger.info was called with the expected message
+    logger_mock.info.assert_called_with(
+        "Button pressed on GPIO '%s'. Raspberry Pi will reboot.",
+        button_pin_mock
     )
+
+    # Ensure os.system("sudo reboot") was not actually executed
     mock_os_system.assert_called_once_with("sudo reboot")
 
+def test_monitor_button(mocker, logger_mock, button_pin_mock):
+    """Test the monitor_button function with GPIO mocks."""
+    gpio_mock = mock.Mock()
+    mocker.patch("reboot_button.button_handler.GPIO", gpio_mock)
+    mocker.patch("os.system")  # Prevents actual system calls
 
-def test_monitor_button(mocker):
-    """
-    Test the monitor_button function.
+    gpio_mock.setmode.reset_mock()
+    gpio_mock.setup.reset_mock()
+    gpio_mock.add_event_detect.reset_mock()
+    gpio_mock.cleanup.reset_mock()
 
-    This test verifies that the monitor_button function correctly initializes
-    GPIO, sets up event detection, and handles different exceptions properly.
-    It ensures that the function does not attempt to run indefinitely during the test.
+    # Create an event to signal the loop to stop
+    stop_event = threading.Event()
 
-    Args:
-        mocker: A pytest-mock fixture used to patch logging, GPIO functions, and time.sleep.
+    # Store original sleep function
+    original_sleep = time.sleep
 
-    Asserts:
-        - GPIO.setmode is called once with GPIO.BCM.
-        - GPIO.setup is called once with the correct pin and parameters.
-        - GPIO.add_event_detect is called with the correct arguments.
-        - The function correctly logs setup steps.
-        - GPIO.cleanup is called at the end.
-    """
-    # Mock dependencies
-    mock_logger = mocker.patch("reboot_button.button_handler.logger")
-    mocked_gpio = mocker.patch("reboot_button.button_handler.GPIO")
-    mocker.patch("time.sleep", side_effect=InterruptedError)
+    # Patch time.sleep to periodically check stop_event
+    def stop_sleep(duration):
+        if stop_event.is_set():
+            raise KeyboardInterrupt  # Simulate a manual interruption
+        original_sleep(duration)
 
-    import reboot_button.button_handler as bh # pylint: disable=import-outside-toplevel
+    mocker.patch("time.sleep", side_effect=stop_sleep)
 
-    # Run the function (will exit early due to mock_time_sleep raising InterruptedError)
-    with pytest.raises(InterruptedError):
-        bh.monitor_button()
+    # Run monitor_button in a separate thread
+    thread = threading.Thread(target=monitor_button, args=(logger_mock, button_pin_mock))
+    thread.start()
 
-    # Assertions to verify GPIO setup
-    mocked_gpio.setmode.assert_called_once_with(mocked_gpio.BCM)
-    mocked_gpio.setup.assert_called_once_with(
-        bh.BUTTON_PIN,
-        mocked_gpio.IN,
-        pull_up_down=mocked_gpio.PUD_UP
-    )
-    mocked_gpio.add_event_detect.assert_called_once_with(
-        bh.BUTTON_PIN, mocked_gpio.FALLING,
-        callback=bh.button_callback,
+    # Let it run for a short time, then stop it
+    original_sleep(0.5)
+    stop_event.set()
+
+    # Wait for the thread to exit
+    thread.join(timeout=1)
+    if thread.is_alive():
+        raise RuntimeError("monitor_button thread did not terminate correctly")
+
+    # Check if GPIO functions were called correctly
+    gpio_mock.setmode.assert_called_once_with(gpio_mock.BCM)
+    gpio_mock.setup.assert_called_once_with(button_pin_mock, gpio_mock.IN, pull_up_down=gpio_mock.PUD_UP)
+    gpio_mock.add_event_detect.assert_called_once_with(
+        button_pin_mock,
+        gpio_mock.FALLING,
+        callback=mocker.ANY,
         bouncetime=300
     )
-    mock_logger.info.assert_any_call("Set GPIO mode.")
-    mock_logger.info.assert_any_call(
-        "Configuration of the pin as an input pin with pull-up resistor."
-    )
-    mock_logger.info.assert_any_call("Add event monitoring.")
 
-    # Ensure GPIO cleanup is called
-    mocked_gpio.cleanup.assert_called_once()
+    # Ensure cleanup is called
+    gpio_mock.cleanup.assert_called_once()

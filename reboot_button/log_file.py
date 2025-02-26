@@ -5,7 +5,7 @@ import os
 from reboot_button.logger_config import setup_file_logger
 
 
-def configure_stdout_logger(name="stdout_logger"):
+def configure_stdout_logger(name="stdout_logger") -> logging.Logger:
     """
     Configures a logger to write to standard output.
 
