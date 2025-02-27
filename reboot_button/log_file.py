@@ -26,7 +26,7 @@ def configure_stdout_logger(name="stdout_logger") -> logging.Logger:
 
 
 logger = configure_stdout_logger()
-logger.info("Logging initialized for standard out.")
+logger.debug("Logging initialized for standard out.")
 
 
 def append_or_create_log_file(log_dir_name, log_file_name) -> bool:
@@ -42,13 +42,13 @@ def append_or_create_log_file(log_dir_name, log_file_name) -> bool:
     """
     log_file_path = os.path.join(log_dir_name, log_file_name)
     try:
-        logger.info("Creating directory '%s' for log file if it does not exist.", log_dir_name)
+        logger.debug("Creating directory '%s' for log file if it does not exist.", log_dir_name)
         os.makedirs(log_dir_name, exist_ok=True)
-        logger.info("Directory '%s' for log file created or already exists.", log_dir_name)
-        logger.info("Appending to or creating log file '%s'.", log_file_path)
+        logger.debug("Directory '%s' for log file created or already exists.", log_dir_name)
+        logger.debug("Appending to or creating log file '%s'.", log_file_path)
         with open(log_file_path, "a", encoding='utf-8'):
             pass
-        logger.info("Log file '%s' created or opened for appending.", log_file_path)
+        logger.debug("Log file '%s' created or opened for appending.", log_file_path)
         return True
     except (IOError, OSError) as err:
         logger.error("Failed to create or append to log file '%s': %s", log_file_path, err)
@@ -74,7 +74,7 @@ def setup_log_file(log_dir_root, log_dir_home, log_file_name) -> dict:
             os.path.join(log_dir_root, log_file_name)
         )
         setup_file_logger(os.path.join(log_dir_root, log_file_name))
-        logger.info("System-wide logger set up.")
+        logger.debug("System-wide logger set up.")
         return {"success": True, "log_file_path": os.path.join(log_dir_root, log_file_name)}
     if append_or_create_log_file(log_dir_home, log_file_name):
         logger.info(
@@ -82,7 +82,7 @@ def setup_log_file(log_dir_root, log_dir_home, log_file_name) -> dict:
             os.path.join(log_dir_home, log_file_name)
         )
         setup_file_logger(os.path.join(log_dir_home, log_file_name))
-        logger.info("User-specific logger set up.")
+        logger.debug("User-specific logger set up.")
         return {"success": True, "log_file_path": os.path.join(log_dir_home, log_file_name)}
-    logger.error("Failed to set up log file.")
+    logger.error("Failed to set up any log file.")
     return {"success": False, "log_file_path": ""}

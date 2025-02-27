@@ -24,7 +24,11 @@ def main():
     if not result_setup_log_file["success"]:
         sys.exit(1)
     logger = setup_file_logger(result_setup_log_file["log_file_path"])
-    logger.info("File logger initialized successfully.")
+    logger.info(
+        "File logger for log file '%s' initialized successfully.",
+        result_setup_log_file["log_file_path"]
+    )
+    logger.info("Entering button monitoring mode on GPIO pin %s.", BUTTON_PIN)
     monitor_button(logger, BUTTON_PIN)
 
 

@@ -1,8 +1,8 @@
 """module button_handler"""
 
 import time
-import os
 import sys
+import os
 import logging
 from RPi import GPIO
 
@@ -18,7 +18,13 @@ def button_callback(logger, channel):
         channel (int): The GPIO pin number that triggered the callback.
     """
     logger.info("Button pressed on GPIO '%s'. Raspberry Pi will reboot.", channel)
-    os.system("sudo reboot")
+    reboot_exit_code = os.system("sudo reboot")
+    if reboot_exit_code != 0:
+        logger.error("Failed to reboot the system.")
+    time.sleep(1)
+    ping_exit_code = os.system("ping -c 1 -W 1 localhost")
+    if ping_exit_code == 0:
+        logger.error("Reboot failed: System still available.")
 
 
 def monitor_button(logger, button_pin):
@@ -40,18 +46,17 @@ def monitor_button(logger, button_pin):
         ValueError: Raised when an invalid GPIO mode or setup parameter is provided.
     """
     try:
-        logger.info("Set GPIO mode.")
+        logger.debug("Set GPIO mode.")
         GPIO.setmode(GPIO.BCM)
-        logger.info("Configuration of the pin as an input pin with pull-up resistor.")
+        logger.debug("Configuration of the pin as an input pin with pull-up resistor.")
         GPIO.setup(button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        logger.info("Add event monitoring.")
+        logger.debug("Add event monitoring.")
         GPIO.add_event_detect(
             button_pin,
             GPIO.FALLING,
             callback=lambda channel: button_callback(logger, channel),
             bouncetime=300
         )
-
         while True:
             time.sleep(1)
     except ValueError as err:
@@ -60,9 +65,11 @@ def monitor_button(logger, button_pin):
         logger.info("Program interrupted by user.")
     except RuntimeError as err:
         logger.error("Runtime error occurred: %s", err)
+    except SystemExit:
+        logger.info("Program exited by system.")
     finally:
         GPIO.cleanup()
-        logger.info("GPIO cleanup done.")
+        logger.debug("GPIO cleanup done.")
 
 
 def main():
