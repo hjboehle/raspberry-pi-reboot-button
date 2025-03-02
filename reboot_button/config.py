@@ -13,3 +13,10 @@ LOG_FILE_NAME = "reboot_button.log"
 
 # GPIO pin number for the button
 BUTTON_PIN = 17
+
+# Exception handling
+SUCCESS_KEY = "success"
+PROCESS_KEY = "process"
+ERROR_TYPE_KEY = "error_type"
+ERROR_MESSAGE_KEY = "error_message"
+EXCEPTION_KEY = "exception"
