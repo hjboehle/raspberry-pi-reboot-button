@@ -3,140 +3,108 @@
 import time
 import sys
 import logging
-import subprocess
+import os
 from RPi import GPIO
-from reboot_button.config import (
-    SUCCESS_KEY,
-    PROCESS_KEY,
-    ERROR_TYPE_KEY,
-    ERROR_MESSAGE_KEY,
-    EXCEPTION_KEY,
-)
 
 
-def run_subprocess_command(logger, command) -> dict:
+def reboot_system(logger) -> bool:
     """
-    Runs a subprocess command and returns the process or error details.
+    Initiates a system reboot using os.execlp.
 
     Args:
-        logger (logging.Logger): The logger object for logging.
-        command (list): The command to run as a list of strings.
+        logger (Logger): The logger object to log messages.
 
     Returns:
-        dict: A dictionary containing either the successful process or error details.
-              - {"success": True, "process": subprocess.Popen} 
-                on success.
-              - {"success": False, "error_type": str, "error_message": str,"exception": exception}
-                on failure.
+        bool: True if reboot command was executed (or attempted), False otherwise.
     """
-    logger.debug(f"Starting subprocess with command: {command}")
     try:
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return {SUCCESS_KEY: True, PROCESS_KEY: process}
+        os.execlp("sudo", "sudo", "reboot")
+        # This line should never be reached if reboot command is successful
+        return True  # Should never be reached
     except FileNotFoundError as err:
-        logger.error(f"Command not found: {command}")
-        return {
-            SUCCESS_KEY: False,
-            ERROR_TYPE_KEY: type(err).__name__,
-            ERROR_MESSAGE_KEY: str(err),
-            EXCEPTION_KEY: err
-        }
+        logger.error("Command not found: sudo")
+        logger.error(
+            "Error Type: '%s', Message: '%s'",
+            type(err).__name__,
+            str(err)
+        )
+        return False
+    except PermissionError as err:
+        logger.error(f"Permission error occurred during reboot execution: {err}")
+        logger.error(
+            "Error Type: '%s', Message: '%s'",
+            type(err).__name__,
+            str(err)
+        )
+        return False
     except OSError as err:
-        logger.error(f"OS error occurred during subprocess execution: {err}")
-        return {
-            SUCCESS_KEY: False,
-            ERROR_TYPE_KEY: type(err).__name__,
-            ERROR_MESSAGE_KEY: str(err),
-            EXCEPTION_KEY: err
-        }
+        logger.error(f"OS error occurred during reboot execution: {err}")
+        logger.error(
+            "Error Type: '%s', Message: '%s'",
+            type(err).__name__,
+            str(err)
+        )
+        return False
 
 
-def button_callback(logger, channel):
+def is_system_alive(logger) -> bool:
+    """
+    Checks if the system is still responsive by attempting to run /bin/true.
+
+    Args:
+        logger (Logger): The logger object to log messages.
+
+    Returns:
+        bool: True if /bin/true runs successfully, False otherwise.
+    """
+    try:
+        os.execlp("/bin/true", "/bin/true")
+        return True  # Should never be reached
+    except OSError:
+        return False
+
+def button_callback(logger, channel) -> bool:
     """
     Callback function for the button press event.
 
-    Logs a message and initiates a system reboot using subprocess.
-    The reboot process is cancelled if the ping is successful, indicating
-    that the system is still available.
+    Logs a message and attempts to reboot the system.
+    If the reboot fails, it checks if the system is responsive and logs accordingly.
 
     Args:
         logger (Logger): The logger object to log messages.
         channel (int): The GPIO pin number that triggered the callback.
+
+    Returns:
+        bool: True if reboot was initiated (or attempted), False if an error occurred.
     """
-    logger.info("Button pressed on GPIO '%s'. Raspberry Pi will reboot.", channel)
-    reboot_process = None
-    ping_process = None
-    try:
-        # Starte den Reboot-Prozess im Hintergrund.
-        reboot_result = run_subprocess_command(logger, ["sudo", "reboot"])
-        if not reboot_result[SUCCESS_KEY]:
-            logger.error(
-                "Reboot process could not be started. Exiting function. " \
-                    "Error Type: '%s', Message: '%s'",
-                reboot_result[ERROR_TYPE_KEY],
-                reboot_result[ERROR_MESSAGE_KEY]
+    logger.info("Button pressed on GPIO '%s'. Attempting to reboot.", channel)
+
+    reboot_result = reboot_system(logger)
+    if reboot_result:
+        # The system is rebooting. This should not be reached.
+        return True
+
+    logger.error("Maybe a password is required for sudo.")
+    logger.info("Waiting for a second and trying to run /bin/true.")
+    time.sleep(1)
+
+    if is_system_alive(logger):
+        logger.error(
+            "Test with '/bin/true' successful. System is still up and waiting for " \
+                "password input for sudo."
             )
-            return
-        reboot_process = reboot_result[PROCESS_KEY]
-        logger.debug("Reboot process started with PID: %s", reboot_process.pid)
-
-        # Warte kurz, damit das System etwas Zeit hat, mit dem Reboot zu beginnen.
-        time.sleep(1)
-
-        # Versuche zu pingen, um zu sehen, ob das System noch erreichbar ist.
-        ping_result = run_subprocess_command(logger, ["ping", "-c", "1", "-W", "1", "localhost"])
-
-        if not ping_result[SUCCESS_KEY]:
-            logger.error(
-                "Ping process could not be started. Assuming reboot is in progress. " \
-                    "Error Type: '%s', Message: '%s'",
-                ping_result[ERROR_TYPE_KEY],
-                ping_result[ERROR_MESSAGE_KEY]
-            )
-            return
-        ping_process = ping_result[PROCESS_KEY]
-        with ping_process:
-            ping_process.wait()
-            ping_exit_code = ping_process.returncode
-            logger.debug("Ping process finished with exit code: %s", ping_exit_code)
-
-        if ping_exit_code == 0:
-            # Ping erfolgreich, System ist noch erreichbar.
-            logger.error("Reboot failed: System still available. Cancelling reboot process.")
-
-            # Versuche den Reboot-Prozess zu beenden.
-            try:
-                reboot_process.terminate()
-                logger.debug("Reboot process terminated.")
-                reboot_process.wait(timeout=5)  # Warte bis der Prozess beendet ist oder Time out
-                logger.debug("Reboot process terminated successfully.")
-            except subprocess.TimeoutExpired:
-                logger.error(
-                    "Failed to terminate the reboot process in time. Will kill process now."
-                )
-                reboot_process.kill()
-                logger.debug("Reboot process killed.")
-
-        else:
-            logger.info("Ping failed, assuming reboot is in progress.")
-
-    except ValueError as err:
-        logger.error("Invalid value provided: %s", err)
-    finally:
-        if reboot_process and reboot_process.poll() is None:
-            reboot_process.kill()
-            logger.debug("Reboot process killed during exception handling or finalization")
-        if ping_process and ping_process.poll() is None:
-            ping_process.kill()
-            logger.debug("Ping process killed during exception handling or finalization")
+    else:
+        logger.error("Ping failed, the system is likely down or unresponsive.")
+        logger.error("Assuming the system is rebooting.")
+    return False
 
 
-def monitor_button(logger, button_pin):
+def monitor_button(logger, button_pin) -> None:
     """
     Monitors the button press and sets up GPIO configurations.
 
-    Initializes GPIO mode, sets up the button pin, and adds event detection 
-    for falling edge signals. The function continuously monitors the GPIO 
+    Initializes GPIO mode, sets up the button pin, and adds event detection
+    for falling edge signals. The function continuously monitors the GPIO
     pin for changes and logs relevant information or errors.
 
     Args:
@@ -165,16 +133,21 @@ def monitor_button(logger, button_pin):
             time.sleep(1)
     except ValueError as err:
         logger.error("Invalid GPIO configuration: %s", err)
+    except KeyError as err:
+        logger.error("Missing key in Result: %s", err)
+    except TypeError as err:
+        logger.error("Type Error: %s", err)
     except KeyboardInterrupt:
         logger.info("Program interrupted by user.")
     except RuntimeError as err:
         logger.error("Runtime error occurred: %s", err)
+    except GPIO.InvalidChannelException as err:
+        logger.error("Invalid GPIO channel specified: %s", err)
     except SystemExit:
         logger.info("Program exited by system.")
     finally:
         GPIO.cleanup()
         logger.debug("GPIO cleanup done.")
-
 
 def main():
     """
@@ -182,6 +155,7 @@ def main():
     """
     logging.info("this script is not meant to be run directly")
     sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
