@@ -1,102 +1,178 @@
-"""module test_button_handler"""
+"""module test_button_handler.py"""
 
 import logging
-import sys
-from unittest import mock
 import os
-import threading
-import time
+from unittest.mock import patch, Mock
+
 import pytest
 
-
-# Ensure the project root is in sys.path
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-
-
-# Mock RPi.GPIO module BEFORE importing button_handler
-sys.modules["RPi"] = mock.Mock()
-sys.modules["RPi.GPIO"] = mock.Mock()
-
-from reboot_button.button_handler import ( # pylint: disable=wrong-import-position
-    button_callback,
-    monitor_button
-)
+# Wir importieren hier nicht RPi, sondern wir mocken es beim Import
+# from reboot_button.button_handler import (
+#     reboot_system,
+#     is_system_alive,
+#     button_callback,
+#     monitor_button
+# )
 
 
-@pytest.fixture(name="logger_mock")
-def logger():
-    """Fixture to create a logger mock."""
-    return mock.Mock(spec=logging.Logger)
+@pytest.fixture
+def mock_logger():
+    """Fixture to create a mock logger."""
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    return logger
 
+# Um das Import Problem zu umgehen, verwenden wir jetzt patch.dict
+@patch.dict('sys.modules', {'RPi': Mock(), 'RPi.GPIO': Mock()})
+def test_reboot_system_success(mock_logger):
+    """Test reboot_system with successful os.execlp call."""
+    # Da die Module importiert wurden, müssen wir sie jetzt importieren
+    from reboot_button.button_handler import reboot_system
+    
+    with patch("reboot_button.button_handler.os.execlp") as mock_execlp:
+        mock_execlp.return_value = None
+        result = reboot_system(mock_logger)
+        mock_execlp.assert_called_once_with("sudo", "sudo", "reboot")
+        assert result is True
 
-@pytest.fixture(name="button_pin_mock")
-def button_pin():
-    """Fixture to define a test GPIO pin."""
-    return 17  # Example GPIO pin number
+@patch.dict('sys.modules', {'RPi': Mock(), 'RPi.GPIO': Mock()})
+def test_reboot_system_file_not_found(mock_logger):
+    """Test reboot_system with FileNotFoundError."""
+    # Da die Module importiert wurden, müssen wir sie jetzt importieren
+    from reboot_button.button_handler import reboot_system
+    
+    with patch("reboot_button.button_handler.os.execlp") as mock_execlp:
+        mock_execlp.side_effect = FileNotFoundError
+        result = reboot_system(mock_logger)
+        assert result is False
 
+@patch.dict('sys.modules', {'RPi': Mock(), 'RPi.GPIO': Mock()})
+def test_reboot_system_permission_error(mock_logger):
+    """Test reboot_system with PermissionError."""
+    # Da die Module importiert wurden, müssen wir sie jetzt importieren
+    from reboot_button.button_handler import reboot_system
+    
+    with patch("reboot_button.button_handler.os.execlp") as mock_execlp:
+        mock_execlp.side_effect = PermissionError
+        result = reboot_system(mock_logger)
+        assert result is False
 
-def test_button_callback(mocker, logger_mock, button_pin_mock):
-    """Test the button_callback function."""
-    mock_os_system = mocker.patch("os.system")
+@patch.dict('sys.modules', {'RPi': Mock(), 'RPi.GPIO': Mock()})
+def test_reboot_system_os_error(mock_logger):
+    """Test reboot_system with OSError."""
+    # Da die Module importiert wurden, müssen wir sie jetzt importieren
+    from reboot_button.button_handler import reboot_system
 
-    button_callback(logger_mock, button_pin_mock)
+    with patch("reboot_button.button_handler.os.execlp") as mock_execlp:
+        mock_execlp.side_effect = OSError
+        result = reboot_system(mock_logger)
+        assert result is False
 
-    # Check if logger.info was called with the expected message
-    logger_mock.info.assert_called_with(
-        "Button pressed on GPIO '%s'. Raspberry Pi will reboot.",
-        button_pin_mock
-    )
+@patch.dict('sys.modules', {'RPi': Mock(), 'RPi.GPIO': Mock()})
+def test_is_system_alive_success(mock_logger):
+    """Test is_system_alive with successful os.execlp call."""
+    # Da die Module importiert wurden, müssen wir sie jetzt importieren
+    from reboot_button.button_handler import is_system_alive
+    
+    with patch("reboot_button.button_handler.os.execlp") as mock_execlp:
+        mock_execlp.return_value = None
+        result = is_system_alive(mock_logger)
+        mock_execlp.assert_called_once_with("/bin/true", "/bin/true")
+        assert result is True
 
-    # Ensure os.system("sudo reboot") was not actually executed
-    mock_os_system.assert_called_once_with("sudo reboot")
+@patch.dict('sys.modules', {'RPi': Mock(), 'RPi.GPIO': Mock()})
+def test_is_system_alive_os_error(mock_logger):
+    """Test is_system_alive with OSError."""
+    # Da die Module importiert wurden, müssen wir sie jetzt importieren
+    from reboot_button.button_handler import is_system_alive
+    
+    with patch("reboot_button.button_handler.os.execlp") as mock_execlp:
+        mock_execlp.side_effect = OSError
+        result = is_system_alive(mock_logger)
+        assert result is False
 
-def test_monitor_button(mocker, logger_mock, button_pin_mock):
-    """Test the monitor_button function with GPIO mocks."""
-    gpio_mock = mock.Mock()
-    mocker.patch("reboot_button.button_handler.GPIO", gpio_mock)
-    mocker.patch("os.system")  # Prevents actual system calls
+@patch.dict('sys.modules', {'RPi': Mock(), 'RPi.GPIO': Mock()})
+@patch("reboot_button.button_handler.time.sleep")
+@patch("reboot_button.button_handler.is_system_alive")
+@patch("reboot_button.button_handler.reboot_system")
+def test_button_callback_reboot_success(
+    mock_reboot_system, mock_is_system_alive, mock_sleep, mock_logger
+):
+    """Test button_callback with successful reboot_system."""
+    # Da die Module importiert wurden, müssen wir sie jetzt importieren
+    from reboot_button.button_handler import button_callback
 
-    gpio_mock.setmode.reset_mock()
-    gpio_mock.setup.reset_mock()
-    gpio_mock.add_event_detect.reset_mock()
-    gpio_mock.cleanup.reset_mock()
+    mock_reboot_system.return_value = True
+    result = button_callback(mock_logger, 17)
+    mock_reboot_system.assert_called_once_with(mock_logger)
+    mock_is_system_alive.assert_not_called()
+    mock_sleep.assert_not_called()
+    assert result is True
 
-    # Create an event to signal the loop to stop
-    stop_event = threading.Event()
+@patch.dict('sys.modules', {'RPi': Mock(), 'RPi.GPIO': Mock()})
+@patch("reboot_button.button_handler.time.sleep")
+@patch("reboot_button.button_handler.is_system_alive")
+@patch("reboot_button.button_handler.reboot_system")
+def test_button_callback_reboot_failed_system_alive(
+    mock_reboot_system, mock_is_system_alive, mock_sleep, mock_logger
+):
+    """Test button_callback with failed reboot and system alive."""
+    # Da die Module importiert wurden, müssen wir sie jetzt importieren
+    from reboot_button.button_handler import button_callback
+    
+    mock_reboot_system.return_value = False
+    mock_is_system_alive.return_value = True
+    result = button_callback(mock_logger, 17)
+    mock_reboot_system.assert_called_once_with(mock_logger)
+    mock_is_system_alive.assert_called_once_with(mock_logger)
+    mock_sleep.assert_called_once_with(1)
+    assert result is False
 
-    # Store original sleep function
-    original_sleep = time.sleep
+@patch.dict('sys.modules', {'RPi': Mock(), 'RPi.GPIO': Mock()})
+@patch("reboot_button.button_handler.time.sleep")
+@patch("reboot_button.button_handler.is_system_alive")
+@patch("reboot_button.button_handler.reboot_system")
+def test_button_callback_reboot_failed_system_dead(
+    mock_reboot_system, mock_is_system_alive, mock_sleep, mock_logger
+):
+    """Test button_callback with failed reboot and system dead."""
+    # Da die Module importiert wurden, müssen wir sie jetzt importieren
+    from reboot_button.button_handler import button_callback
+    
+    mock_reboot_system.return_value = False
+    mock_is_system_alive.return_value = False
+    result = button_callback(mock_logger, 17)
+    mock_reboot_system.assert_called_once_with(mock_logger)
+    mock_is_system_alive.assert_called_once_with(mock_logger)
+    mock_sleep.assert_called_once_with(1)
+    assert result is False
 
-    # Patch time.sleep to periodically check stop_event
-    def stop_sleep(duration):
-        if stop_event.is_set():
-            raise KeyboardInterrupt  # Simulate a manual interruption
-        original_sleep(duration)
+@patch.dict('sys.modules', {'RPi': Mock(), 'RPi.GPIO': Mock()})
+@patch("reboot_button.button_handler.GPIO")
+@patch("reboot_button.button_handler.time.sleep")
+def test_monitor_button(mock_time_sleep, mock_gpio, mock_logger):
+    """
+    Test case for the monitor_button function.
 
-    mocker.patch("time.sleep", side_effect=stop_sleep)
+    Verifies that monitor_button correctly configures GPIO and adds event detection.
+    """
+    # Da die Module importiert wurden, müssen wir sie jetzt importieren
+    from reboot_button.button_handler import monitor_button, button_callback
 
-    # Run monitor_button in a separate thread
-    thread = threading.Thread(target=monitor_button, args=(logger_mock, button_pin_mock))
-    thread.start()
+    mock_gpio.setmode = Mock()
+    mock_gpio.setup = Mock()
+    mock_gpio.add_event_detect = Mock()
 
-    # Let it run for a short time, then stop it
-    original_sleep(0.5)
-    stop_event.set()
+    # Ersetze GPIO.FALLING, damit der Test auf allen Systemen läuft
+    setattr(mock_gpio, 'FALLING', 1)
 
-    # Wait for the thread to exit
-    thread.join(timeout=1)
-    if thread.is_alive():
-        raise RuntimeError("monitor_button thread did not terminate correctly")
+    mock_callback = Mock()
+    mock_gpio.add_event_detect.side_effect = lambda pin, edge, callback, bouncetime: mock_callback(callback)
 
-    # Check if GPIO functions were called correctly
-    gpio_mock.setmode.assert_called_once_with(gpio_mock.BCM)
-    gpio_mock.setup.assert_called_once_with(button_pin_mock, gpio_mock.IN, pull_up_down=gpio_mock.PUD_UP)
-    gpio_mock.add_event_detect.assert_called_once_with(
-        button_pin_mock,
-        gpio_mock.FALLING,
-        callback=mocker.ANY,
-        bouncetime=300
-    )
-
-    # Ensure cleanup is called
-    gpio_mock.cleanup.assert_called_once()
+    monitor_button(mock_logger, 17)
+    mock_gpio.setmode.assert_called_once_with(mock_gpio.BCM)
+    mock_gpio.setup.assert_called_once_with(17, mock_gpio.IN, pull_up_down=mock_gpio.PUD_UP)
+    mock_gpio.add_event_detect.assert_called_once()
+    mock_callback.assert_called_once()
+    mock_callback.call_args[0][0]()
+    

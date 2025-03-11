@@ -59,9 +59,12 @@ def is_system_alive(logger) -> bool:
     """
     try:
         os.execlp("/bin/true", "/bin/true")
+        logger.info("System is still up and running.")
         return True  # Should never be reached
     except OSError:
+        logger.error("System is likely down or unresponsive.")
         return False
+
 
 def button_callback(logger, channel) -> bool:
     """
