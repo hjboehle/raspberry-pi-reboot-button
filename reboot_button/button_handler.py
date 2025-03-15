@@ -102,17 +102,19 @@ def button_callback(logger, channel) -> bool:
     return False
 
 
-def monitor_button(logger, button_pin) -> None:
+def monitor_button(logger, pin: int, callback, bouncetime: int) -> None:
     """
     Monitors the button press and sets up GPIO configurations.
 
-    Initializes GPIO mode, sets up the button pin, and adds event detection
-    for falling edge signals. The function continuously monitors the GPIO
-    pin for changes and logs relevant information or errors.
+    Initializes GPIO mode, configures the specified pin as an input with
+    a pull-up resistor, and adds event detection for falling edge signals.
+    The function continuously monitors the GPIO pin for changes.
 
     Args:
         logger (Logger): The logger object to log messages.
-        button_pin (int): The GPIO pin number to monitor.
+        pin (int): The GPIO pin number to monitor.
+        callback: The function to be called when a falling edge is detected.
+        bouncetime (int): The debounce time in milliseconds for the button.
 
     Raises:
         GPIO.InvalidChannelException: Raised when an invalid GPIO channel is specified.
@@ -123,14 +125,16 @@ def monitor_button(logger, button_pin) -> None:
     try:
         logger.debug("Set GPIO mode.")
         GPIO.setmode(GPIO.BCM)
-        logger.debug("Configuration of the pin as an input pin with pull-up resistor.")
-        GPIO.setup(button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        logger.debug(
+            "Configuration of the pin as an input pin with pull-up resistor."
+        )
+        GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         logger.debug("Add event monitoring.")
         GPIO.add_event_detect(
-            button_pin,
+            pin,
             GPIO.FALLING,
-            callback=lambda channel: button_callback(logger, channel),
-            bouncetime=300
+            callback=callback,
+            bouncetime=bouncetime
         )
         while True:
             time.sleep(1)
@@ -149,8 +153,10 @@ def monitor_button(logger, button_pin) -> None:
     except SystemExit:
         logger.info("Program exited by system.")
     finally:
-        GPIO.cleanup()
+        GPIO.remove_event_detect(pin)
         logger.debug("GPIO cleanup done.")
+        GPIO.cleanup()
+
 
 def main():
     """
