@@ -102,7 +102,7 @@ def button_callback(logger, channel) -> bool:
     return False
 
 
-def monitor_button(logger, pin: int, callback, bouncetime: int) -> None:
+def monitor_button(logger, pin: int) -> None:
     """
     Monitors the button press and sets up GPIO configurations.
 
@@ -113,15 +113,13 @@ def monitor_button(logger, pin: int, callback, bouncetime: int) -> None:
     Args:
         logger (Logger): The logger object to log messages.
         pin (int): The GPIO pin number to monitor.
-        callback: The function to be called when a falling edge is detected.
-        bouncetime (int): The debounce time in milliseconds for the button.
 
     Raises:
         GPIO.InvalidChannelException: Raised when an invalid GPIO channel is specified.
         RuntimeError: Raised when there is a runtime issue adding edge detection.
-        KeyboardInterrupt: Raised when the program is manually interrupted.
         ValueError: Raised when an invalid GPIO mode or setup parameter is provided.
     """
+    bouncetime = 200
     try:
         logger.debug("Set GPIO mode.")
         GPIO.setmode(GPIO.BCM)
@@ -133,11 +131,14 @@ def monitor_button(logger, pin: int, callback, bouncetime: int) -> None:
         GPIO.add_event_detect(
             pin,
             GPIO.FALLING,
-            callback=callback,
+            callback=lambda channel: button_callback(logger, channel),
             bouncetime=bouncetime
         )
+        logger.info("Button monitoring started. Waiting for events...")
+        # Keep the script running to detect button presses.
         while True:
             time.sleep(1)
+
     except ValueError as err:
         logger.error("Invalid GPIO configuration: %s", err)
     except KeyError as err:

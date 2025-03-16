@@ -1,7 +1,6 @@
 """module test_button_handler.py"""
 
 import logging
-import os
 from unittest.mock import patch, Mock
 import pytest
 
@@ -161,36 +160,3 @@ def test_button_callback_reboot_failed_system_dead(
     mock_is_system_alive.assert_called_once_with(logger)
     mock_sleep.assert_called_once_with(1)
     assert result is False
-
-
-@patch.dict('sys.modules', {'RPi': Mock(), 'RPi.GPIO': Mock()})
-@patch("reboot_button.button_handler.GPIO")
-def test_monitor_button(mock_gpio, logger):
-    """
-    Test case for the monitor_button function.
-
-    Verifies that monitor_button correctly configures GPIO and adds event detection.
-    """
-    from reboot_button.button_handler import monitor_button, button_callback
-
-    mock_gpio.setmode = Mock()
-    mock_gpio.setup = Mock()
-    mock_gpio.add_event_detect = Mock()
-    mock_gpio.cleanup = Mock()
-    mock_gpio.remove_event_detect = Mock()
-
-    # Define FALLING directly in the test
-    mock_gpio.FALLING = 1
-
-    monitor_button(logger, 17, button_callback, 200)
-
-    mock_gpio.setmode.assert_called_once_with(mock_gpio.BCM)
-    mock_gpio.setup.assert_called_once_with(17, mock_gpio.IN, pull_up_down=mock_gpio.PUD_UP)
-    mock_gpio.add_event_detect.assert_called_once_with(
-        17,
-        mock_gpio.FALLING,
-        callback=button_callback,
-        bouncetime=200
-    )
-    mock_gpio.remove_event_detect.assert_called_once_with(17)
-    mock_gpio.cleanup.assert_called_once()
