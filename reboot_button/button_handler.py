@@ -119,14 +119,16 @@ def monitor_button(logger, pin: int) -> None:
         RuntimeError: Raised when there is a runtime issue adding edge detection.
         ValueError: Raised when an invalid GPIO mode or setup parameter is provided.
     """
-    bouncetime = 200
+    bouncetime = 500
     try:
         logger.debug("Set GPIO mode.")
         GPIO.setmode(GPIO.BCM)
+        logger.debug("GPIO mode set successfully.")
         logger.debug(
             "Configuration of the pin as an input pin with pull-up resistor."
         )
         GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        logger.debug("GPIO setup done.")
         logger.debug("Add event monitoring.")
         GPIO.add_event_detect(
             pin,
@@ -134,6 +136,7 @@ def monitor_button(logger, pin: int) -> None:
             callback=lambda channel: button_callback(logger, channel),
             bouncetime=bouncetime
         )
+        logger.debug("Event detection added.")
         logger.info("Button monitoring started. Waiting for events...")
         # Keep the script running to detect button presses.
         while True:
@@ -149,12 +152,19 @@ def monitor_button(logger, pin: int) -> None:
         logger.info("Program interrupted by user.")
     except RuntimeError as err:
         logger.error("Runtime error occurred: %s", err)
+        logger.error(
+            "Error Type: '%s', Message: '%s'",
+            type(err).__name__,
+            str(err)
+        )
     except GPIO.InvalidChannelException as err:
         logger.error("Invalid GPIO channel specified: %s", err)
     except SystemExit:
         logger.info("Program exited by system.")
     finally:
-        GPIO.remove_event_detect(pin)
+        if GPIO.get_event_detect(pin):
+            GPIO.remove_event_detect(pin)
+            logger.debug("Event detection removed.")
         logger.debug("GPIO cleanup done.")
         GPIO.cleanup()
 
