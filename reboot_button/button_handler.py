@@ -132,6 +132,7 @@ def monitor_button(logger, pin: int) -> None:
         logger.debug("GPIO setup done.")
         logger.debug("Add event monitoring.")
         logger.info("GPIO Version is '%s', pin is '%i'", GPIO.VERSION, pin)
+        time.sleep(0.1)
         GPIO.add_event_detect(
             pin,
             GPIO.FALLING,
@@ -166,8 +167,10 @@ def monitor_button(logger, pin: int) -> None:
         logger.info("Program exited by system.")
     finally:
         if event_added:
+            logger.info("Removing event detection")
             GPIO.remove_event_detect(pin)
             logger.debug("Event detection removed.")
+        logger.info("Cleaning up GPIO")
         logger.debug("GPIO cleanup done.")
         GPIO.cleanup()
 
