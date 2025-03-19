@@ -1,15 +1,15 @@
 """module main"""
 
 import sys
-from reboot_button.config import (
+from config import (
     LOG_DIR_NAME_ROOT,
     LOG_DIR_NAME_HOME,
     LOG_FILE_NAME,
     BUTTON_PIN
 )
-from reboot_button.log_file import setup_log_file
-from reboot_button.logger_config import setup_file_logger
-from reboot_button.button_handler import monitor_button
+from log_file import setup_log_file
+from logger_config import setup_file_logger
+from button_handler import monitor_button
 
 
 def main():
