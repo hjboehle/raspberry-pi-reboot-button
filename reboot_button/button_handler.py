@@ -129,6 +129,7 @@ def monitor_button(logger, pin: int) -> None:
             "Configuration of the pin as an input pin with pull-up resistor."
         )
         GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        time.sleep(0.1)
         logger.debug("GPIO setup done.")
         logger.debug("Add event monitoring.")
         logger.info("GPIO Version is '%s', pin is '%i'", GPIO.VERSION, pin)
