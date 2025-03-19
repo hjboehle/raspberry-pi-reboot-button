@@ -120,6 +120,7 @@ def monitor_button(logger, pin: int) -> None:
         ValueError: Raised when an invalid GPIO mode or setup parameter is provided.
     """
     bouncetime = 500
+    event_added = False
     try:
         logger.debug("Set GPIO mode.")
         GPIO.setmode(GPIO.BCM)
@@ -130,12 +131,14 @@ def monitor_button(logger, pin: int) -> None:
         GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         logger.debug("GPIO setup done.")
         logger.debug("Add event monitoring.")
+        logger.info("GPIO Version is '%s', pin is '%i'", GPIO.VERSION, pin)
         GPIO.add_event_detect(
             pin,
             GPIO.FALLING,
             callback=lambda channel: button_callback(logger, channel),
             bouncetime=bouncetime
         )
+        event_added = True
         logger.debug("Event detection added.")
         logger.info("Button monitoring started. Waiting for events...")
         # Keep the script running to detect button presses.
@@ -162,7 +165,7 @@ def monitor_button(logger, pin: int) -> None:
     except SystemExit:
         logger.info("Program exited by system.")
     finally:
-        if GPIO.get_event_detect(pin):
+        if event_added:
             GPIO.remove_event_detect(pin)
             logger.debug("Event detection removed.")
         logger.debug("GPIO cleanup done.")

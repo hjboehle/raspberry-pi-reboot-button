@@ -5,3 +5,5 @@ __pycache__
 /.log
 /.coverage
 /test.log
+test_gpio.py
+
