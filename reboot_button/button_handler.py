@@ -5,6 +5,7 @@ import sys
 import logging
 import os
 from RPi import GPIO
+from config import BUTTON_PIN, LOG_DIR_NAME_ROOT, LOG_FILE_NAME
 
 
 def reboot_system(logger) -> bool:
@@ -18,6 +19,7 @@ def reboot_system(logger) -> bool:
         bool: True if reboot command was executed (or attempted), False otherwise.
     """
     try:
+        logger.info("Rebooting system...")
         os.execlp("sudo", "sudo", "reboot")
         # This line should never be reached if reboot command is successful
         return True  # Should never be reached
@@ -102,7 +104,7 @@ def button_callback(logger, channel) -> bool:
     return False
 
 
-def monitor_button(logger, pin: int) -> None:
+def monitor_button(logger, pin: int) -> int:
     """
     Monitors the button press and sets up GPIO configurations.
 
@@ -149,12 +151,16 @@ def monitor_button(logger, pin: int) -> None:
 
     except ValueError as err:
         logger.error("Invalid GPIO configuration: %s", err)
+        return 1
     except KeyError as err:
         logger.error("Missing key in Result: %s", err)
+        return 1
     except TypeError as err:
         logger.error("Type Error: %s", err)
+        return 1
     except KeyboardInterrupt:
         logger.info("Program interrupted by user.")
+        return 0
     except RuntimeError as err:
         logger.error("Runtime error occurred: %s", err)
         logger.error(
@@ -162,10 +168,13 @@ def monitor_button(logger, pin: int) -> None:
             type(err).__name__,
             str(err)
         )
+        return 1
     except GPIO.InvalidChannelException as err:
         logger.error("Invalid GPIO channel specified: %s", err)
+        return 1
     except SystemExit:
         logger.info("Program exited by system.")
+        return 0
     finally:
         if event_added:
             logger.info("Removing event detection")
@@ -174,15 +183,26 @@ def monitor_button(logger, pin: int) -> None:
         logger.info("Cleaning up GPIO")
         logger.debug("GPIO cleanup done.")
         GPIO.cleanup()
+    return 0
 
 
 def main():
     """
     Main entry point for this module.
     """
-    logging.info("this script is not meant to be run directly")
-    sys.exit(1)
+    # Configure logging
+    os.makedirs(LOG_DIR_NAME_ROOT, exist_ok=True)
+    log_file_path = os.path.join(LOG_DIR_NAME_ROOT, LOG_FILE_NAME)
+    logging.basicConfig(
+        filename=log_file_path,
+        level=logging.DEBUG,
+        format="%(asctime)s - %(levelname)s - %(message)s"
+    )
+    logger = logging.getLogger(__name__)
+    logger.info("Starting button monitoring service.")
+    sys.exit(monitor_button(logger, BUTTON_PIN))
 
 
 if __name__ == "__main__":
     main()
+
