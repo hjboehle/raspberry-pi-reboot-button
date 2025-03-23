@@ -22,3 +22,4 @@ def setup_file_logger(log_file_path, name="reboot_button"):
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
     return logger
+
