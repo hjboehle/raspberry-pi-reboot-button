@@ -1,6 +1,7 @@
 """module main"""
 
 import sys
+import time
 from config import (
     LOG_DIR_NAME_ROOT,
     LOG_DIR_NAME_HOME,
@@ -29,8 +30,11 @@ def main():
         result_setup_log_file["log_file_path"]
     )
     logger.info("Entering button monitoring mode on GPIO pin %s.", BUTTON_PIN)
-    monitor_button(logger, BUTTON_PIN)
+    while True:
+        monitor_button(logger, BUTTON_PIN)
+        time.sleep(1)
 
 
 if __name__ == "__main__":
     main()
+

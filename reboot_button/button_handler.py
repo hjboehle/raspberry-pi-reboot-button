@@ -134,7 +134,7 @@ def monitor_button(logger, pin: int) -> None:
         logger.debug("GPIO setup done.")
         logger.debug("Add event monitoring.")
         logger.info("GPIO Version is '%s', pin is '%i'", GPIO.VERSION, pin)
-        time.sleep(0.1)
+        time.sleep(0.5)  # Add a short delay here
         GPIO.add_event_detect(
             pin,
             GPIO.FALLING,
