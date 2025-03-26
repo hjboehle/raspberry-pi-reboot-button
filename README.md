@@ -103,7 +103,7 @@ The project has the following structure:
 
 * `reboot-button/` (root directory)
   * `reboot_button/` (directory for the Python source code)
-    *`__init__.py` (module initialization)
+    * `__init__.py` (module initialization)
     * `button_handler.py` (Python script to handle the reboot button)
     * `config.py` (Python script with configuration data)
     * `log_file.py` (Python script for log file logging)
