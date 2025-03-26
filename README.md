@@ -101,21 +101,22 @@ This project includes unit tests written with pytest. To run the tests in the ro
 
 The project has the following structure:
 
-reboot-button/
-├── reboot_button/             # directory for the Python source code
-│   ├── button_handler.py      # Python script to handle the reboot button
-│   ├── config.py              # Python script with configuration data
-│   ├── log_file.py            # Python script for log file logging
-│   ├── logger_config.py       # Python script to congigure the logging
-│   └── main.py                # main Python script
-├── service/                   # directory for the systemd service file
-│   └── reboot-button.service  # systemd Service Konfiguration
-├── test/                      # directory for the Python unit tests
-├── .gitignore                 # file with ignored files for git
-├── .pylintrc                  # file with Python linting rules
-├── LICENSE                    # license
-├── README.md                  # readme file (this file)
-└── requirements.txt           # file with the required Python packages
+* `reboot-button/` (root directory)
+  * `reboot_button/` (directory for the Python source code)
+    *`__init__.py` (module initialization)
+    * `button_handler.py` (Python script to handle the reboot button)
+    * `config.py` (Python script with configuration data)
+    * `log_file.py` (Python script for log file logging)
+    * `logger_config.py` (Python script to configure the logging)
+    * `main.py` (main Python script)
+  * `service/` (directory for the systemd service file)
+    * `reboot-button.service` (systemd service configuration)
+  * `test/` (directory for the Python unit tests)
+* `.gitignore` (file with ignored files for git)
+* `.pylintrc` (file with Python linting rules)
+* `LICENSE` (license)
+* `README.md` (readme file - this file)
+* `requirements.txt` (file with the required Python packages)
 
 ## Troubleshooting
 
