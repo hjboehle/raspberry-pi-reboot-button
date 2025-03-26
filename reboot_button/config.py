@@ -12,7 +12,7 @@ LOG_DIR_NAME_HOME = f"{HOME_DIR_NAME}/reboot_button/log"
 LOG_FILE_NAME = "reboot_button.log"
 
 # GPIO pin number for the button
-BUTTON_PIN = 17
+BUTTON_PIN = 21
 
 # Exception handling
 SUCCESS_KEY = "success"
