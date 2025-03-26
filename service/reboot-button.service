@@ -1,17 +1,13 @@
 [Unit]
 Description=Reboot Button Service
-After=multi-user.target
+After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/reboot_button
-Restart=always
 User=root
-Group=root
-WorkingDirectory=/opt/reboot_button
-Environment="PYTHONPATH=/opt/reboot_button"
-Environment="PYTHONBUFFERED=1"
+WorkingDirectory=/opt/reboot-button/reboot_button
+ExecStart=/opt/reboot-button/.venv/bin/python /opt/reboot-button/reboot_button/main.py
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
-
